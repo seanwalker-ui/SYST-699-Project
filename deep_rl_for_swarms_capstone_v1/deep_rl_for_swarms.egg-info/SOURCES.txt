@@ -1,6 +1,7 @@
 README.md
 setup.py
 deep_rl_for_swarms/__init__.py
+deep_rl_for_swarms/capstone_parameter_file.py
 deep_rl_for_swarms/run_multiagent_trpo.py
 deep_rl_for_swarms.egg-info/PKG-INFO
 deep_rl_for_swarms.egg-info/SOURCES.txt

@@ -1,0 +1,6 @@
+numpy
+
+[test]
+pytest
+pytest-cov
+hypothesis[numpy]
