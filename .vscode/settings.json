@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./deep_rl_for_swarms_capstone_v1/deep_rl_for_swarms"
+    ]
+}

@@ -81,6 +81,16 @@ class MlpPolicy(object):
     def act(self, stochastic, ob):
         ac1, vpred1 = self._act(stochastic, ob)
         return ac1, vpred1
+        # New code
+        # neglogp = self.pd.neglogp(ac1)  # Compute the negative log probability of the action
+        #return ac1, vpred1, neglogp
+# --------------------------------- SW - Add neglogp ----------------------------------------------- #
+    """   
+    def neglogp(self, action):
+        return -self.logp(action)  # Negative log probability of the action
+    """
+# -------------------------------------------------------------------------------------------------- # 
+
     def get_variables(self):
         return tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, self.scope)
     def get_trainable_variables(self):

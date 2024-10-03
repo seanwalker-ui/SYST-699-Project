@@ -9,6 +9,8 @@ from deep_rl_for_swarms.ma_envs.agents.point_agents.rendezvous_agent import Poin
 from deep_rl_for_swarms.ma_envs.commons import utils as U
 import matplotlib.pyplot as plt
 
+# New package for the No Fly Zones
+from shapely.geometry import Point, Polygon
 
 class RendezvousEnv(gym.Env, EzPickle):
     metadata = {'render.modes': ['human', 'animate']}
@@ -44,6 +46,32 @@ class RendezvousEnv(gym.Env, EzPickle):
         self.state_hist = []
         self.timestep = 0
         self.ax = None
+        
+ # --------------- SW code - Add obstacles --------------------- #        
+        # Add obstacles to the environment --> Keep this
+        self.obstacle_positions = self._generate_obstacles()
+        
+        # Define no-fly zones as polygons with vertices --> Delete if No fly zone causes issues.
+        self.no_fly_zones = [
+            Polygon([(0, 0), (0, 10), (10, 10), (10, 0)]),  # Example of square no-fly zone
+            Polygon([(20, 20), (20, 25), (25, 25), (25, 20)])  # Another square no-fly zone
+        ]
+
+    def _generate_obstacles(self):
+        """Generate a fixed number of obstacles with random positions."""
+        num_obstacles = 5  # Define how many obstacles we want
+        obstacles = np.random.rand(num_obstacles, 2) * self.world_size  # Random 2D positions
+        return obstacles
+    
+# ------------------ No fly Zone Code ----------------------------#
+    def is_in_no_fly_zone(self, position):
+        """Check if the given position is inside any of the no-fly zones."""
+        point = Point(position[:2])  # Use only x, y coordinates
+        for zone in self.no_fly_zones:
+            if zone.contains(point):
+                return True
+        return False
+# --------------- SW code - Code ends --------------------------- #
 
     @property
     def state_space(self):
@@ -82,6 +110,24 @@ class RendezvousEnv(gym.Env, EzPickle):
         else:
             return False
 
+    # --------------- SW code - Returns current positions of the agents --------------------- #
+    
+    
+    def get_drone_positions(self):
+        """Return the positions of all drones (agents) in the environment."""
+        if hasattr(self, 'world') and hasattr(self.world, 'agent_states'):
+            #return [agent.position for agent in self.world.agent_states]
+            # Assuming agent_states is a numpy array where each element is a position
+            return self.world.agent_states  # Return the numpy array directly
+        else:
+            raise AttributeError("RendezvousEnv does not contain agent positions.")
+        
+    def get_obstacle_positions(self):
+        """Return the positions of all obstacles in the environment."""
+        return self.obstacle_positions
+    
+    # --------------- SW code Ends ---------------------------------------------------------- #
+        
     def get_param_values(self):
         return self.__dict__
 
