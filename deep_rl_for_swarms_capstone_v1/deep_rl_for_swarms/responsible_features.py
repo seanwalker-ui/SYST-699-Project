@@ -84,7 +84,9 @@ class ResponsibleAI:
         Log the decision for accountability and review later.
         Append each decision to the log file for tracking.
         """
-        log_file_path = 'C:\\Users\\sawal\\Documents\\VS_Code\\Output\\decision_log.txt'
+        
+        # Note: Change this file path to your choosing
+        log_file_path = ''
         with open(log_file_path, 'a') as f:
             f.write(f"Drone {drone_id}: {decision}\n")
 
