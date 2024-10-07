@@ -4,7 +4,6 @@
 
 # This code defines the responsibility features for responsible_features.py
 import numpy as np
-
 class ResponsibleAI:
     def __init__(self, min_safe_distance=5, alert_distance=2):
         # minimum safe distance from obstacles
@@ -86,7 +85,7 @@ class ResponsibleAI:
         """
         
         # Note: Change this file path to your choosing
-        log_file_path = ''
+        log_file_path = 'C:\\Users\\sawal\\Documents\\VS_Code\\Output\\decision_log.txt'
         with open(log_file_path, 'a') as f:
             f.write(f"Drone {drone_id}: {decision}\n")
 

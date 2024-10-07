@@ -16,6 +16,10 @@ from responsible_features import ResponsibleAI
 # Initialize the ResponsibleAI instance
 responsible_ai = ResponsibleAI(min_safe_distance=5, alert_distance=2)
 
+# Input Grid matrix
+from virtualmap import GridEnvironment
+# --------------- ----------------------------------- --------------------------- #
+
 # ------------------------------------------------------------------------------- #
 # --------------- MK code - getting state, action, etc data --------------------- #
 # ------------------------------------------------------------------------------- #
@@ -137,8 +141,6 @@ class CustomMonitor(gym.Wrapper):
 # -------------------------- Return to base code -------------------------------- #
 # ------------------------------------------------------------------------------- #
 
-
-#def train(num_timesteps, log_dir, num_episodes=100, num_drones=20):
 def train(num_timesteps, log_dir):
     import deep_rl_for_swarms.common.tf_util as U
     sess = U.single_threaded_session()
@@ -178,7 +180,7 @@ def train(num_timesteps, log_dir):
         return get_action_fn  # Return the function
         """
 
-# ------------------------------------ ------------------------ ----------------------------------------------- #  
+# ------------------------------------ Return to Base Code ----------------------------------------------- #  
   
     # The environment is created using the rendezvous.RendezvousEnv class and wrapped in a CustomMonitor, which logs data for each step (state, action, reward, etc.).
     env = rendezvous.RendezvousEnv(nr_agents=20,
@@ -190,6 +192,18 @@ def train(num_timesteps, log_dir):
                                    torus=False,
                                    dynamics='unicycle_acc')
 
+    # ------------------------------------ SW code - Initialize Grid Environment ------------------------- #
+
+    # Create an instance of GridEnvironment
+    grid_env = GridEnvironment(size=100, obstacle_probability=0.1, num_drones=env.nr_agents, policy=policy_fn, env=env)
+    
+    # Generate the grid environment with obstacles
+    grid_env.generate_environment()
+    
+    # Visualize the drone movements
+    grid_env.visualize_grid()
+    # ------------------------------------ Return to base code -------------------------------------------- #
+    
     # ------------------------------------------------------------------------------- #
     # ----------------------- SW code - No Fly Zone Check --------------------------- #
     # ------------------------------------------------------------------------------- #
@@ -235,8 +249,12 @@ def train(num_timesteps, log_dir):
     trpo_mpi.learn(custom_logger, policy_fn, timesteps_per_batch=10, max_kl=0.01, cg_iters=10, cg_damping=0.1,
                    max_timesteps=num_timesteps, gamma=0.99, lam=0.98, vf_iters=5, vf_stepsize=1e-3)
 
+    # Visualize the grid after training
+    grid_env.visualize_grid()
     custom_logger.close()
     env.close()
+    
+    
 
 
 def main():
@@ -249,6 +267,7 @@ def main():
     #num_drones = 20
     #train(num_timesteps=10, log_dir=log_dir, num_episodes=num_episodes, num_drones=num_drones)
 # ------------------------------------------------------------------------------------------------------------------------- #    
+    #train(num_timesteps=1e7, log_dir=log_dir)
     train(num_timesteps=10, log_dir=log_dir)
 
 if __name__ == '__main__':
