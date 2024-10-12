@@ -26,6 +26,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
     ep_rets = []
     ep_lens = []
     time_steps = []
+    drone_positions = [] # For logging positions
 
     # Initialize history arrays
     sub_sample_thresh = 8

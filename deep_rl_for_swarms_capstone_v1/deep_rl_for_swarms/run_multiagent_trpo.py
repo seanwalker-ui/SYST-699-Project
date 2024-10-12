@@ -12,12 +12,12 @@ from deep_rl_for_swarms.ma_envs.envs.point_envs import rendezvous
 
 # --------------- SW code - Initialize Drone RAI data --------------------------- #
 # Input RAI features
-from responsible_features import ResponsibleAI
+#from responsible_features import ResponsibleAI
 # Initialize the ResponsibleAI instance
-responsible_ai = ResponsibleAI(min_safe_distance=5, alert_distance=2)
+#responsible_ai = ResponsibleAI(min_safe_distance=5, alert_distance=2)
 
 # Input Grid matrix
-from virtualmap import GridEnvironment
+#from virtualmap import GridEnvironment
 # --------------- ----------------------------------- --------------------------- #
 
 # ------------------------------------------------------------------------------- #
@@ -26,6 +26,7 @@ from virtualmap import GridEnvironment
 import json
 import numpy as np
 import gym
+import csv
 import capstone_parameter_file as cpf
 
 class CustomMonitor(gym.Wrapper):
