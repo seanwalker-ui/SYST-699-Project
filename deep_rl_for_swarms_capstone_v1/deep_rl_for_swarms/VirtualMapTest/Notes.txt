@@ -1,0 +1,108 @@
+Key Points:
+.No explicit action directing drones towards the target: Currently, the drones do not have a clear mechanism that pushes them towards the target. 
+ They are not being directed to move based on the target's location.
+.Incorporating Target-Aware Actions: Modify the drone's behavior to include movement towards the target location in the environment, and the policy
+ needs to understand this objective.
+Incorporate Target Guidance in CustomMonitor: The drone movement should be influenced by the relative position of each drone to the target.
+
+Solution Outline:
+Compute the action for each drone based on its current position and the target's position.
+Use a simple guiding action where the drones will calculate a direction vector towards the target and move in that direction.
+Once a drone gets close enough to the target, the target will reset.
+
+Explanation of Changes:
+compute_action_towards_target (before step() function): This function calculates a direction vector for each drone that guides it toward the target. The action is a normalized vector pointing from the drone's current position to the target.
+
+step(): This is the updated step() method that computes actions for each drone based on the target's location. After computing the actions, the environment steps forward, and the drones move towards the target.
+Once all drones are within 20 pixels of the target, the target is reset to a new random position.
+
+Ensure Target Is Displayed on the Window:
+Already have the TargetLocation class displaying the target in the DroneVisualizer class. Here's a quick recap of how it works:
+
+self.visualizer.target_location.draw_target(self.screen) is called in DroneVisualizer.draw_drones() to draw the target as a red circle.
+Once all drones get close to the target, self.visualizer.reset_target() resets the target to a new random position.
+
+
+##################################################################################################
+Error:
+File "run_multiagent_trpo.py", line 201, in step
+    action_to_target = self.compute_action_towards_target(pos, target_pos)
+  File "run_multiagent_trpo.py", line 174, in compute_action_towards_target
+    direction_vector = np.array(target_pos) - np.array(drone_pos)
+ValueError: operands could not be broadcast together with shapes (2,) (5,)
+
+Explanation:
+.Mismatch between the shape of the target position ((2,), a 2D coordinate) and the drone position (5,).
+.Trying to subtract these two arrays, which leads to the ValueError because the arrays have incompatible shapes
+
+Solution:
+.Change the compute_action_towards_target method to extract only the first two elements of the drone position (x, y) before calculating the direction vector.
+.drone_pos_2d = drone_pos[:2]: This extracts only the x and y coordinates from the drone's position, which is likely a 5D vector containing additional information
+ like velocity or orientation. By slicing [:2], we ensure that only the relevant position information is used for computing the action.
+####################################################################################################
+
+####################################################################################################
+Error:
+File "run_multiagent_trpo.py", line 207, in step
+    next_state, reward, done, info = self.env.step(actions)
+  File "c:\users\sawal\documents\vs_code\syst-or-699---xai\deep_rl_for_swarms_capstone_v1\deep_rl_for_swarms\ma_envs\envs\point_envs\rendezvous.py", line 177, in step
+    clipped_actions = np.clip(actions[0:self.nr_agents, :], self.agents[0].action_space.low, self.agents[0].action_space.high)
+TypeError: list indices must be integers or slices, not tuple
+
+Explanation:
+.actions is a list of numpy arrays (or a list of lists), and we are trying to index it with actions[0:self.nr_agents, :], which is invalid for lists 
+ (because lists require an integer or a single slice, not two indices like in a 2D array).
+
+1. Convert to numpy array: actions_array = np.array(actions) converts the list of actions into a numpy array, which allows indexing 
+   with slices like actions_array[0:self.nr_agents, :].
+
+2. Apply clipping: np.clip() clips the values in actions_array to lie within the action space bounds defined by self.agents[0].action_space.low and
+   self.agents[0].action_space.high.
+
+Solution:
+.Replace - clipped_actions = np.clip(actions[0:self.nr_agents, :], self.agents[0].action_space.low, self.agents[0].action_space.high)
+with/
+# Convert the list of actions into a numpy array before slicing
+actions_array = np.array(actions)
+# Clip the actions to the bounds of the action space for each agent
+clipped_actions = np.clip(actions_array[0:self.nr_agents, :], self.agents[0].action_space.low, self.agents[0].action_space.high)
+####################################################################################################
+OR
+####################################################################################################
+1.Make the target position a (5,) tuple, just like the drone position, modify the target position so that it has the same structure.
+
+2.Instead of using NumPy, you can perform the subtraction element-wise using a list comprehension: [target_pos[i] - drone_pos[i] for i in range(len(drone_pos))]
+
+3. Normalization is done only on the first two components (x, y) to compute the direction vector correctly. The sum of squares of the first two elements is taken,
+   square-rooted to get the norm. If the norm is greater than a small threshold (1e-3), normalize the x and y components by dividing by the norm, leaving
+   the remaining three components unchanged.
+
+4. Avoiding TypeError: actions variable will remain a list of lists or tuples with 5 elements each, compatible with how rendezvous.py slices or processes it.
+#####################################################################################################
+
+#####################################################################################################
+Error:
+File "c:\users\sawal\documents\vs_code\syst-or-699---xai\deep_rl_for_swarms_capstone_v1\deep_rl_for_swarms\ma_envs\envs\point_envs\rendezvous.py", line 211, in step
+    rewards = self.get_reward(actions)
+  File "c:\users\sawal\documents\vs_code\syst-or-699---xai\deep_rl_for_swarms_capstone_v1\deep_rl_for_swarms\ma_envs\envs\point_envs\rendezvous.py", line 232, in get_reward
+    action_pen = 0.001 * np.mean(actions**2)
+TypeError: unsupported operand type(s) for ** or pow(): 'list' and 'int'
+
+Solution: actions = np.array(actions): This converts the list of actions into a NumPy array so that you can apply element-wise operations like squaring.
+# Convert actions to a numpy array to apply element-wise operations
+actions = np.array(actions)
+
+# Calculate the penalty for actions: square each component of the actions and take the mean
+action_pen = 0.001 * np.mean(actions**2)
+#####################################################################################################
+Error:
+File "c:\users\sawal\documents\vs_code\syst-or-699---xai\deep_rl_for_swarms_capstone_v1\deep_rl_for_swarms\ma_envs\envs\point_envs\rendezvous.py", line 221, in step
+    info = {'state': self.world.agent_states, 'actions': actions, 'action_penalty': 0.05 * np.mean(actions**2),
+TypeError: unsupported operand type(s) for ** or pow(): 'list' and 'int'
+
+Solution: convert the list of actions to a NumPy array (or manually square each component) before applying the ** operator.
+
+1. actions_array = np.array(actions): This converts the list of actions to a NumPy array so that you can perform element-wise operations.
+2. actions_array**2: This squares each element of the array.
+3. np.mean(actions_array**2): This computes the mean of the squared actions.
+4. action_penalty = 0.05 * ...: This calculates the action penalty.

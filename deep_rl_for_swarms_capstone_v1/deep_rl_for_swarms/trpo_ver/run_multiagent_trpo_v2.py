@@ -8,7 +8,7 @@ from mpi4py import MPI
 from deep_rl_for_swarms.common import logger, cmd_util
 from deep_rl_for_swarms.policies import mlp_mean_embedding_policy
 from deep_rl_for_swarms.rl_algo.trpo_mpi import trpo_mpi
-from deep_rl_for_swarms.ma_envs.envs.point_envs import rendezvous
+from ma_envs.envs.point_envs import rendezvous2
 #from deep_rl_for_swarms.ma_envs.envs.point_envs import pursuit_evasion
 
 
@@ -165,7 +165,7 @@ def train(num_timesteps, log_dir):
                                                    hid_size=[64], feat_size=[64])
 
     # The environment is created using the rendezvous.RendezvousEnv class and wrapped in a CustomMonitor, which logs data for each step (state, action, reward, etc.).
-    env = rendezvous.RendezvousEnv(nr_agents=20,
+    env = rendezvous2.RendezvousEnv(nr_agents=20,
                                    obs_mode='sum_obs_acc',
                                    comm_radius=100 * np.sqrt(2),
                                    world_size=100,

@@ -6,7 +6,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib.animation import FuncAnimation
-from ma_envs.envs.point_envs.rendezvous import RendezvousEnv
+from ma_envs.envs.point_envs.rendezvous2 import RendezvousEnv
 from deep_rl_for_swarms.policies import mlp_mean_embedding_policy
 from deep_rl_for_swarms.policies.mlp_policy import MlpPolicy  # Import the MLP policy
 from deep_rl_for_swarms.common import logger

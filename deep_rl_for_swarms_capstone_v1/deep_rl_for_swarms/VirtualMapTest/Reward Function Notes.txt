@@ -1,0 +1,24 @@
+To make the drones move more efficiently and faster toward the target location:
+
+1. Increase the speed of movement: The action generation mechanism should scale the movement toward the target more aggressively.
+2. Reward shaping: The reward mechanism should encourage faster movement toward the target by giving more negative rewards for being further away from the target and rewarding closeness more.
+3. Proportional controller tuning: Adjust the proportional controller to ensure drones move in a more efficient manner.
+
+#################################################################################################################################################
+Error:
+File "c:\users\sawal\documents\vs_code\syst-or-699---xai\deep_rl_for_swarms_capstone_v1\deep_rl_for_swarms\rl_algo\trpo_mpi\trpo_mpi.py", line 244, in learn
+    seg = seg_gen.__next__()
+  File "c:\users\sawal\documents\vs_code\syst-or-699---xai\deep_rl_for_swarms_capstone_v1\deep_rl_for_swarms\rl_algo\trpo_mpi\trpo_mpi.py", line 91, in traj_segment_generator
+    rews[i] = rew[sub_sample_idx] if sub_sample else rew
+IndexError: invalid index to scalar variable.
+
+Added:
+# Ensure rew is always a list/array when it needs to be indexed
+if not isinstance(rew, (list, np.ndarray)):
+    rew = [rew]  # Convert scalar to list
+# Original Code
+rews[i] = rew[sub_sample_idx] if sub_sample else rew
+
+New Addition:
+
+#################################################################################################################################################

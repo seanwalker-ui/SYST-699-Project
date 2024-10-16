@@ -88,8 +88,45 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         prevacs[i] = prevac
 
         ob, rew, new, _ = env.step(ac)
-        rews[i] = rew[sub_sample_idx] if sub_sample else rew
-
+# ---------------------------------------------------------------------------------------------------------------------- #       
+        ## New code
+        # Ensure rew is always a list/array when it needs to be indexed
+        if not isinstance(rew, (list, np.ndarray)):
+            rew = [rew]  # Convert scalar to list
+        # Original Code
+        #rews[i] = rew[sub_sample_idx] if sub_sample else rew
+        
+        # Ensure sub_sample_idx is an integer if sub_sample is True
+        # Check for a single-element array: The condition rew[int(sub_sample_idx)].size == 1 ensures .item() is only used if the array has exactly one element.
+        # Handle multi-element arrays: For arrays with more than one element, this example simply takes the first element ([0]). 
+        # Might need to adjust this behavior depending on desired result (e.g., sum, mean, etc.).
+        """
+        if sub_sample:
+            # Extract a scalar from the array if needed
+            if isinstance(rew[int(sub_sample_idx)], np.ndarray):
+                if rew[int(sub_sample_idx)].size == 1:  # Single element array
+                    rews[i] = rew[int(sub_sample_idx)].item()
+                else:
+                    rews[i] = np.rew[int(sub_sample_idx)][0]  # Use first element (or adjust this logic)
+            else:
+                rews[i] = rew[int(sub_sample_idx)]
+        else:
+            rews[i] = rew
+        """
+        if isinstance(rew, (list, np.ndarray)):
+            rew_val = rew[int(sub_sample_idx)]  # Extract the relevant reward
+            
+            # Check if it's an array
+            if isinstance(rew_val, np.ndarray):
+                if rew_val.size == 1:  # If it's a single-element array
+                    rews[i] = rew_val.item()  # Convert to scalar
+                else:
+                    rews[i] = np.mean(rew_val)  # Choose np.sum(rew_val) if summation is preferred
+            else:
+                rews[i] = rew_val  # It's already a scalar or a single value
+        else:
+            rews[i] = rew  # Handle non-array, non-list reward
+# ---------------------------------------------------------------------------------------------------------------------- #
         cur_ep_ret += rew
         cur_ep_len += 1
         if new:

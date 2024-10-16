@@ -9,8 +9,6 @@ from deep_rl_for_swarms.ma_envs.agents.point_agents.rendezvous_agent import Poin
 from deep_rl_for_swarms.ma_envs.commons import utils as U
 import matplotlib.pyplot as plt
 
-# New package for the No Fly Zones
-from shapely.geometry import Point, Polygon
 
 class RendezvousEnv(gym.Env, EzPickle):
     metadata = {'render.modes': ['human', 'animate']}
@@ -46,32 +44,6 @@ class RendezvousEnv(gym.Env, EzPickle):
         self.state_hist = []
         self.timestep = 0
         self.ax = None
-        
- # --------------- SW code - Add obstacles --------------------- #        
-        # Add obstacles to the environment --> Keep this
-        self.obstacle_positions = self._generate_obstacles()
-        
-        # Define no-fly zones as polygons with vertices --> Delete if No fly zone causes issues.
-        self.no_fly_zones = [
-            Polygon([(0, 0), (0, 10), (10, 10), (10, 0)]),  # Example of square no-fly zone
-            Polygon([(20, 20), (20, 25), (25, 25), (25, 20)])  # Another square no-fly zone
-        ]
-
-    def _generate_obstacles(self):
-        """Generate a fixed number of obstacles with random positions."""
-        num_obstacles = 5  # Define how many obstacles we want
-        obstacles = np.random.rand(num_obstacles, 2) * self.world_size  # Random 2D positions
-        return obstacles
-    
-# ------------------ No fly Zone Code ----------------------------#
-    def is_in_no_fly_zone(self, position):
-        """Check if the given position is inside any of the no-fly zones."""
-        point = Point(position[:2])  # Use only x, y coordinates
-        for zone in self.no_fly_zones:
-            if zone.contains(point):
-                return True
-        return False
-# --------------- SW code - Code ends --------------------------- #
 
     @property
     def state_space(self):
@@ -110,6 +82,10 @@ class RendezvousEnv(gym.Env, EzPickle):
         else:
             return False
 
+    def get_param_values(self):
+        return self.__dict__
+
+
     # --------------- SW code - Returns current positions of the agents --------------------- #
     
     
@@ -127,9 +103,7 @@ class RendezvousEnv(gym.Env, EzPickle):
         return self.obstacle_positions
     
     # --------------- SW code Ends ---------------------------------------------------------- #
-        
-    def get_param_values(self):
-        return self.__dict__
+
 
     def reset(self):
         self.timestep = 0
@@ -174,7 +148,19 @@ class RendezvousEnv(gym.Env, EzPickle):
 
         # assert len(actions) == self.nr_agents
         # print(actions)
-        clipped_actions = np.clip(actions[0:self.nr_agents, :], self.agents[0].action_space.low, self.agents[0].action_space.high)
+        # ---------------------------------------------------------------------------------------------------------------------------------------------------- #        
+        # Original Code
+        #clipped_actions = np.clip(actions[0:self.nr_agents, :], self.agents[0].action_space.low, self.agents[0].action_space.high)
+        ### New code
+        # Convert the list of actions into a numpy array before slicing
+        actions_array = np.array(actions)
+        # Perform element-wise squaring of the actions
+        action_penalty = 0.05 * np.mean(actions_array**2)
+
+        # Clip the actions to the bounds of the action space for each agent
+        clipped_actions = np.clip(actions_array[0:self.nr_agents, :], self.agents[0].action_space.low, self.agents[0].action_space.high)
+# ---------------------------------------------------------------------------------------------------------------------------------------------------- # 
+        
 
         for agent, action in zip(self.agents, clipped_actions):
             agent.action.u = action
@@ -208,9 +194,15 @@ class RendezvousEnv(gym.Env, EzPickle):
         # if done:
         #     rewards += 100
         # info = dict()
-        info = {'state': self.world.agent_states, 'actions': actions, 'action_penalty': 0.05 * np.mean(actions**2),
+        # ---------------------------------------------------------------------------------------------------------------------------------------------------- # 
+        # Original Code:
+        #info = {'state': self.world.agent_states, 'actions': actions, 'action_penalty': 0.05 * np.mean(actions**2),
+                #'velocities': np.vstack([agent.state.p_vel for agent in self.agents])}
+        info = {'state': self.world.agent_states, 'actions': actions, 'action_penalty': action_penalty,
                 'velocities': np.vstack([agent.state.p_vel for agent in self.agents])}
-
+        
+        
+        # ---------------------------------------------------------------------------------------------------------------------------------------------------- # 
         return next_obs, rewards, done, info
 
     def get_reward(self, actions):
@@ -219,7 +211,15 @@ class RendezvousEnv(gym.Env, EzPickle):
         all_distances_cap = np.where(all_distances > self.comm_radius, self.comm_radius, all_distances)
         all_distances_cap_norm = all_distances_cap / self.comm_radius  # (self.world_size * np.sqrt(2) / 2)
         dist_rew = np.mean(all_distances_cap_norm)
+        # ---------------------------------------------------------------------------------------------------------------------------------------------------- #        
+        # Original Code
+        #action_pen = 0.001 * np.mean(actions**2)
+        
+        ### New Code
+        actions = np.array(actions)
+        # Calculate the penalty for actions: square each component of the actions and take the mean
         action_pen = 0.001 * np.mean(actions**2)
+        # ---------------------------------------------------------------------------------------------------------------------------------------------------- #
         r = - dist_rew - action_pen
         r = np.ones((self.nr_agents,)) * r
         # print(dist_rew, action_pen)
