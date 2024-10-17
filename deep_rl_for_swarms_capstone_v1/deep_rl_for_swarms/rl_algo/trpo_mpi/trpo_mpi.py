@@ -94,7 +94,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         if not isinstance(rew, (list, np.ndarray)):
             rew = [rew]  # Convert scalar to list
         # Original Code
-        #rews[i] = rew[sub_sample_idx] if sub_sample else rew
+        rews[i] = rew[sub_sample_idx] if sub_sample else rew
         
         # Ensure sub_sample_idx is an integer if sub_sample is True
         # Check for a single-element array: The condition rew[int(sub_sample_idx)].size == 1 ensures .item() is only used if the array has exactly one element.
@@ -113,6 +113,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
         else:
             rews[i] = rew
         """
+        """
         if isinstance(rew, (list, np.ndarray)):
             rew_val = rew[int(sub_sample_idx)]  # Extract the relevant reward
             
@@ -126,6 +127,7 @@ def traj_segment_generator(pi, env, horizon, stochastic):
                 rews[i] = rew_val  # It's already a scalar or a single value
         else:
             rews[i] = rew  # Handle non-array, non-list reward
+        """
 # ---------------------------------------------------------------------------------------------------------------------- #
         cur_ep_ret += rew
         cur_ep_len += 1

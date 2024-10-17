@@ -29,7 +29,7 @@ import capstone_parameter_file as cpf
 
 import pygame
 import random
-import threading   # run the training and the visualizer in parallel threads to ensure both work simultaneously without blocking each other.
+import threading   # run training and visualizer in parallel threads to ensure both work simultaneously without blocking each other.
 
 # The DroneVisualizer class will manage the pygame window and display the drones' positions during each step.
 class DroneVisualizer:

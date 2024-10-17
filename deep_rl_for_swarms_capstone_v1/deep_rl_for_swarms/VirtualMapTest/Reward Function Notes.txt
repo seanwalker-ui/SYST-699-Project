@@ -22,3 +22,21 @@ rews[i] = rew[sub_sample_idx] if sub_sample else rew
 New Addition:
 
 #################################################################################################################################################
+
+#################################################################################################################################################
+Make a new class, SwarmController, which will handle the logic of keeping the drones in a swarm while moving them towards a randomly generated target location. 
+This class will control the movement of the drones, ensure they stay together in the swarm formation, and update their positions towards the target.
+
+The key steps are:
+Generate a random target: The drones will move towards this target.
+Maintain swarm formation: The drones will move towards the target while staying in a swarm using a simple force-based model (i.e., attraction towards the target and attraction to the swarm center).
+Display everything: Both the drones and the target will be visualized in the pygame window, with the drones labeled by ID and the target labeled as well.
+
+New statement:
+"Create a new class in the python script to have the drone swarm move to a random target location that is labeled on the virtual display. 
+ To do this, I want to make sure that the drones are trained to converge in the swarm position and travel to the labeled target location. 
+ This can be done by increasing the reward function to make the drones more likely to travel to the target location in a swarm. 
+ Log all of this data in the CustomWrapper class. Here is my code for run_multiagent_trpo.py;"
+
+ Important: Modify the reward function to give higher rewards when drones converge and move toward the target location in CustomMonitor. Add the distance between the drones and the target as 
+            part of the reward function. The closer they are to the target, the higher the reward.
