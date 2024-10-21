@@ -271,7 +271,7 @@ class CustomMonitor(gym.Wrapper):
         # Update the visualizer with the current drone positions
         self.visualizer.update(drone_positions)          
         # Add the swarm reward to the normal environment reward
-        total_reward = reward + target_reward
+        total_reward = reward + target_reward    # Rewards are negative
                                
         # Prepare log entry
         log_entry = {
@@ -302,7 +302,7 @@ class CustomMonitor(gym.Wrapper):
         #self.episode_rewards.append(reward)  # Logs the reward obtained in this step.
         self.episode_rewards.append(total_reward)
 
-        #return next_state, reward, done, info
+        #return next_state, reward, total_reward, done, info
         return next_state, total_reward, done, info
 
     # Recursively converts numpy arrays to Python lists, which can be stored in JSON format. This ensures all logged data is JSON serializable.
@@ -406,6 +406,7 @@ def train(num_timesteps, log_dir, num_drones=20, num_no_fly_zones=3, num_humans=
         # gamma=0.99: Discount factor for future rewards.
         # lam=0.98: GAE (Generalized Advantage Estimation) discount factor.
         # vf_iters=5 and vf_stepsize=1e-3: Parameters for optimizing the value function.
+        # Find a way to change the timesteps: default is 130 (self_termination)
     trpo_mpi.learn(custom_logger, policy_fn, timesteps_per_batch=10, max_kl=0.01, cg_iters=10, cg_damping=0.1,
                    max_timesteps=num_timesteps, gamma=0.99, lam=0.98, vf_iters=5, vf_stepsize=1e-3)
 
@@ -462,4 +463,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

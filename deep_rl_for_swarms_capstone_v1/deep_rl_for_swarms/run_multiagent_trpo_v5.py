@@ -28,15 +28,204 @@ import gym             # A toolkit for developing and comparing reinforcement le
 import capstone_parameter_file as cpf
 
 import pygame
+import random
 import threading   # run training and visualizer in parallel threads to ensure both work simultaneously without blocking each other.
-from drone_visualizer import DroneVisualizer  # Import the DroneVisualizer class from the new file
+import time        # Additional imports for pausing and resuming functionality
 
-# This class extends the gym.Wrapper class to add custom logging and tracking of the environment's state, actions, and rewards. 
+
+# This is a class to handle pausing, resuming, and restarting of the training and display.
+class TrainingController:
+    def __init__(self):
+        self.pause_event = threading.Event()  # Event for pausing
+        self.pause_event.set()  # Initially sets the running state to True
+        self.stop_event = threading.Event()  # Event to stop the training
+        self.restart_event = threading.Event()  # Event to restart the training
+        
+    def pause(self):
+        # Pauses the training and display.
+        print("Pausing training and display...")
+        self.pause_event.clear()  # Clear event to pause
+    
+    def resume(self):
+        # Resumes the training and display.
+        print("Resuming training and display...")
+        self.pause_event.set()  # Set event to resume
+    
+    def restart(self):
+        # Restarts the training and display.
+        print("Restarting training and display...")
+        self.restart_event.set()  # Set event to restart
+    
+    def stop(self):
+        # Stops the training and display.
+        print("Stopping training and display...")
+        self.stop_event.set()  # Set event to stop both
+
+
+# The DroneVisualizer class will manage the pygame window and display the drones' positions during each step.
+class DroneVisualizer:
+    def __init__(self, window_width=1280, window_height=960, drone_radius=5, num_drones=20, num_no_fly_zones=3, num_humans=5, num_buildings=5, num_trees=5, num_animals=5):
+        # Pygame setup
+        pygame.init()
+        self.window_width = window_width
+        self.window_height = window_height
+        self.drone_radius = drone_radius  # Radius is half of the diameter (5 pixels)
+        self.screen = pygame.display.set_mode((self.window_width, self.window_height))
+        pygame.display.set_caption("Drone Swarm Visualization")
+        self.font = pygame.font.SysFont(None, 16)
+        self.clock = pygame.time.Clock()
+        self.fps = 30  # Frames per second
+
+        # Initialize obstacle lists and colors for the obstacles/drones.
+        self.drone_color = (0, 0, 255)  # Blue for drones
+        self.human_color = (255, 165, 0)  # Orange color for humans
+        self.building_color = (128, 128, 128)  # Gray color for buildings
+        self.tree_color = (0, 255, 0)  # Green color for trees
+        self.animal_color = (139, 69, 19)  # Brown color for animals
+        self.humans = []
+        self.buildings = []
+        self.trees = []
+        self.animals = []
+        
+        # Initialize no-fly zones
+        self.no_fly_zones = []
+        self.num_no_fly_zones = num_no_fly_zones
+        self.generate_no_fly_zones(self.num_no_fly_zones)
+        self.no_fly_zone_color = (255, 255, 0)  # Yellow
+        
+        # Generate a random target location
+        self.target_location = self.generate_random_target()
+        self.target_radius = 10  # Radius of the target
+
+    def generate_no_fly_zones(self, num_no_fly_zones):
+        # Generate random positions and sizes for no-fly zones
+        for i in range(num_no_fly_zones):
+            size = random.randint(50, 150)  # Random size between 50 and 150 pixels
+            x = random.randint(0, self.window_width - size)
+            y = random.randint(0, self.window_height - size)
+            self.no_fly_zones.append({"id": i, "position": (x, y), "size": size})
+
+    def draw_no_fly_zones(self):
+        # Draw the no-fly zones as yellow rectangles
+        for zone in self.no_fly_zones:
+            x, y = zone['position']
+            size = zone['size']
+            pygame.draw.rect(self.screen, self.no_fly_zone_color, (x, y, size, size), width=2)
+            
+            # Label no fly zone with its ID
+            label = self.font.render(f"No Fly Zone {zone['id']}", True, (0, 0, 0))  # Black label
+            label_rect = label.get_rect(center=(x + size // 2, y + size // 2))  # Center the label inside the rectangle
+            self.screen.blit(label, label_rect)
+
+    def generate_random_target(self):
+        # Generate a random target location in the environment.
+        target_x = random.randint(0, 100)  # Assuming the environment size is 100x100
+        target_y = random.randint(0, 100)
+        return target_x, target_y
+
+    def generate_obstacles(self, num_humans, num_buildings, num_trees, num_animals):
+        # Generates random positions for different types of obstacles.
+        self.humans = [(random.randint(0, 100), random.randint(0, 100)) for _ in range(num_humans)]
+        self.buildings = [(random.randint(0, 100), random.randint(0, 100)) for _ in range(num_buildings)]
+        self.trees = [(random.randint(0, 100), random.randint(0, 100)) for _ in range(num_trees)]
+        self.animals = [(random.randint(0, 100), random.randint(0, 100)) for _ in range(num_animals)]
+    
+    def draw_obstacles(self):
+        # Draws obstacles (humans, buildings, trees, and animals) on the screen.
+        # Draw humans (circles)
+        for pos in self.humans:
+            x, y = int((pos[0] / 100) * self.window_width), int((pos[1] / 100) * self.window_height)
+            pygame.draw.circle(self.screen, self.human_color, (x, y), 10)
+            label = self.font.render("Human", True, self.human_color)
+            self.screen.blit(label, (x + 10, y))
+
+        # Draw buildings (rectangles)
+        for pos in self.buildings:
+            x, y = int((pos[0] / 100) * self.window_width), int((pos[1] / 100) * self.window_height)
+            pygame.draw.rect(self.screen, self.building_color, (x, y, 40, 40))  # Rectangle for building
+            label = self.font.render("Building", True, self.building_color)
+            self.screen.blit(label, (x + 5, y - 15))
+
+        # Draw trees (triangles)
+        for pos in self.trees:
+            x, y = int((pos[0] / 100) * self.window_width), int((pos[1] / 100) * self.window_height)
+            pygame.draw.polygon(self.screen, self.tree_color, [(x, y - 20), (x - 15, y + 10), (x + 15, y + 10)])
+            label = self.font.render("Tree", True, self.tree_color)
+            self.screen.blit(label, (x + 10, y))
+
+        # Draw animals (small circles)
+        for pos in self.animals:
+            x, y = int((pos[0] / 100) * self.window_width), int((pos[1] / 100) * self.window_height)
+            pygame.draw.circle(self.screen, self.animal_color, (x, y), 7)
+            label = self.font.render("Animal", True, self.animal_color)
+            self.screen.blit(label, (x + 10, y))
+
+    def draw_drones_and_target(self, drone_positions):
+        # Clear the screen with white background
+        self.screen.fill((255, 255, 255))
+
+        # Draw the target location as a red circle
+        target_x, target_y = self.target_location
+        target_x = int((target_x / 100) * self.window_width)
+        target_y = int((target_y / 100) * self.window_height)
+        pygame.draw.circle(self.screen, (255, 0, 0), (target_x, target_y), self.target_radius)
+        
+        # Draw the obstacles (humans, buildings, trees, and animals)
+        self.draw_obstacles()
+        # Draw no-fly zones
+        self.draw_no_fly_zones()
+        
+        # Label the drone with its ID
+        target_label = self.font.render(f"Target Location", True, (255, 0, 0))  # Red text for ID label
+        self.screen.blit(target_label, (target_x + 15, target_y -10))  # Offset the label slightly to the right of the drone
+
+        for i, pos in enumerate(drone_positions):
+            # Extract x and y from the position
+            if len(pos) >= 2:
+                x, y = pos[:2]  # Get the first two elements (x, y)
+            else:
+                raise ValueError(f"Invalid drone position: {pos}")
+
+            # Convert drone positions from environment coordinates to window coordinates
+            x = int((x / 100) * self.window_width)  # Assume the environment size is 100x100
+            y = int((y / 100) * self.window_height)
+
+            # Draw the drone as a blue circle
+            pygame.draw.circle(self.screen, self.drone_color, (x, y), self.drone_radius)
+
+            # Label the drone with its ID
+            label = self.font.render(f"Drone {i}", True, (0, 0, 0))  # Black text for ID label
+            self.screen.blit(label, (x + 10, y))  # Offset the label slightly to the right of the drone
+
+        pygame.display.update()
+
+    def check_for_quit(self):
+        # Allow the user to close the window
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+
+    def update(self, drone_positions):
+        # Check for quit events
+        self.check_for_quit()
+
+        # Draw the drones in their current positions
+        self.draw_drones_and_target(drone_positions)        
+
+        # Limit the frame rate
+        self.clock.tick(self.fps)
+
+    def close(self):
+        pygame.quit()
+
+# Add custom logging and tracking of the environment's state, actions, and rewards. 
 # It logs these interactions at each step during training and writes them into a JSON file.
+# In addition, it includes a pause function.
 class CustomMonitor(gym.Wrapper):
-    # __init__(): Constructor for the CustomMonitor class. It takes the environment (env) and two filenames to store logs and initial state information. 
-    # It initializes internal lists for rewards, episode length, and the log data
-    def __init__(self, env, log_file='gym_log_data.json', initial_state_file='initial_state.json', num_drones=20, num_no_fly_zones=3, num_humans=5, num_buildings=5, num_trees=5, num_animals=5):
+    # Initializes internal lists for rewards, episode length, and the log data
+    def __init__(self, env, log_file='gym_log_data.json', initial_state_file='initial_state.json', training_controller=None, num_drones=20,
+                 num_no_fly_zones=3, num_humans=5, num_buildings=5, num_trees=5, num_animals=5):
         # super(CustomMonitor, self).__init__(env): Calls the parent class (gym.Wrapper) constructor to set up the environment.
         super(CustomMonitor, self).__init__(env)
         self.log_file = log_file
@@ -46,8 +235,9 @@ class CustomMonitor(gym.Wrapper):
         self.log_data = []            # List to store all log entries
         self.initial_state_data = []  # List to store initial state information
 
+        self.training_controller = training_controller
         # Initialize the visualizer
-        self.visualizer = DroneVisualizer(env, num_drones=num_drones, num_no_fly_zones=num_no_fly_zones, num_humans=num_humans, num_buildings=num_buildings, num_trees=num_trees, num_animals=num_animals)
+        self.visualizer = DroneVisualizer(num_drones=num_drones, num_no_fly_zones=num_no_fly_zones, num_humans=num_humans, num_buildings=num_buildings, num_trees=num_trees, num_animals=num_animals)
         # Store the number of no-fly zones and their properties for logging
         self.no_fly_zones = self.visualizer.no_fly_zones
         # Generate obstacles after initializing the visualizer
@@ -74,11 +264,10 @@ class CustomMonitor(gym.Wrapper):
             "distance_matrix": self.convert_ndarray(distance_matrix),
             "angle_matrix": self.convert_ndarray(distance_matrix)
         })
-        
-        self.visualizer.update(self.env.get_drone_positions())
+
         return self.env.reset(**kwargs)
 
-
+    # Computes a reward based on how close drones are to the target and each other. Penalize drones that are far from the target by using the average distance.
     def calculate_swarm_reward(self, drone_positions, target_location):
         # Calculates reward based on how close drones are to the target and how close they are to each other.
         target_x, target_y = target_location
@@ -102,6 +291,10 @@ class CustomMonitor(gym.Wrapper):
     # It logs the current state, next state, reward, and other environment-specific information like distance and angle matrices. 
     # This information is appended to log_data, which tracks the whole episode.
     def step(self, action):
+        # Check if the controller has paused
+        while not self.training_controller.pause_event.is_set():
+            time.sleep(0.1)  # Sleep for a bit until resumed     
+        
         # Logs state, action, reward, next state, and done.
         state = self.env.state if hasattr(self.env, 'state') else self.env.observation_space.sample()
         next_state, reward, done, info = self.env.step(action)
@@ -115,7 +308,7 @@ class CustomMonitor(gym.Wrapper):
         # Update the visualizer with the current drone positions
         self.visualizer.update(drone_positions)          
         # Add the swarm reward to the normal environment reward
-        total_reward = reward + target_reward
+        total_reward = reward + target_reward    # Rewards are negative
                                
         # Prepare log entry
         log_entry = {
@@ -146,7 +339,7 @@ class CustomMonitor(gym.Wrapper):
         #self.episode_rewards.append(reward)  # Logs the reward obtained in this step.
         self.episode_rewards.append(total_reward)
 
-        #return next_state, reward, done, info
+        #return next_state, reward, total_reward, done, info
         return next_state, total_reward, done, info
 
     # Recursively converts numpy arrays to Python lists, which can be stored in JSON format. This ensures all logged data is JSON serializable.
@@ -160,6 +353,15 @@ class CustomMonitor(gym.Wrapper):
             return [self.convert_ndarray(i) for i in item]
         else:
             return item
+
+    def toggle_pause(self):
+        self.paused = not self.paused  # Flip the pause state
+    """
+    def save_log(self):
+        serializable_log_data = self.convert_ndarray(self.log_data)
+        with open(self.log_file, 'w') as f:
+            json.dump(serializable_log_data, f, indent=4)
+    """
 
     # Finalizes and writes all log data and initial state data to JSON files before closing the environment. 
     # This ensures that all data collected during the episode is safely stored for further analysis.
@@ -194,7 +396,7 @@ class CustomMonitor(gym.Wrapper):
 # ------------------------------------------------------------------------------- #
 
 # This function handles the setup and execution of the TRPO (Trust Region Policy Optimization) algorithm to train the agents in the environment.
-def train(num_timesteps, log_dir, num_drones=20, num_no_fly_zones=3, num_humans=5, num_buildings=5, num_trees=5, num_animals=5):
+def train(num_timesteps, log_dir, training_controller, num_drones=20, num_no_fly_zones=3, num_humans=5, num_buildings=5, num_trees=5, num_animals=5):
     import deep_rl_for_swarms.common.tf_util as U
     
     # Initializes a TensorFlow session with a single thread to manage the computations.
@@ -238,7 +440,9 @@ def train(num_timesteps, log_dir, num_drones=20, num_no_fly_zones=3, num_humans=
     # The log files (gym_log_data.json and initial_state.json) are created in the logging directory
     custom_logger = CustomMonitor(env, log_file=logger.get_dir() + '/gym_log_data.json',
                                   initial_state_file=logger.get_dir() + '/initial_state.json',
-                                  num_drones=num_drones, num_no_fly_zones=num_no_fly_zones, num_humans=num_humans, num_buildings=num_buildings, num_trees=num_trees, num_animals=num_animals)
+                                  training_controller=training_controller, 
+                                  num_drones=num_drones, num_no_fly_zones=num_no_fly_zones, num_humans=num_humans, 
+                                  num_buildings=num_buildings, num_trees=num_trees, num_animals=num_animals)
     # ------------------------------------------------------------------------------- #
     # -------------------------- Return to base code -------------------------------- #
     # ------------------------------------------------------------------------------- #
@@ -250,6 +454,7 @@ def train(num_timesteps, log_dir, num_drones=20, num_no_fly_zones=3, num_humans=
         # gamma=0.99: Discount factor for future rewards.
         # lam=0.98: GAE (Generalized Advantage Estimation) discount factor.
         # vf_iters=5 and vf_stepsize=1e-3: Parameters for optimizing the value function.
+        # Find a way to change the timesteps: default is 130 (self_termination)
     trpo_mpi.learn(custom_logger, policy_fn, timesteps_per_batch=10, max_kl=0.01, cg_iters=10, cg_damping=0.1,
                    max_timesteps=num_timesteps, gamma=0.99, lam=0.98, vf_iters=5, vf_stepsize=1e-3)
 
@@ -259,6 +464,23 @@ def train(num_timesteps, log_dir, num_drones=20, num_no_fly_zones=3, num_humans=
 
 # This is the main entry point of the script. It generates a unique logging directory based on the current time and starts the training process by calling train().
 def main():
+    # Initialize training controller
+    training_controller = TrainingController()
+    
+    # Function to listen for user input and control training state
+    def listen_for_input():
+        while True:
+            command = input("Enter 'p' to pause, 'r' to resume, 's' to stop, or 're' to restart: ").strip().lower()
+            if command == 'p':
+                training_controller.pause()
+            elif command == 'r':
+                training_controller.resume()
+            elif command == 're':
+                training_controller.restart()
+            elif command == 's':
+                training_controller.stop()
+                break
+    
     # Get the number of drones from the user
     try:
         num_drones = int(input("Enter the number of drones to run in the rendezvous mission: "))
@@ -269,14 +491,19 @@ def main():
     # Get user input for how many obstacles and no_fly_zones to include.
     try:
         num_no_fly_zones = int(input("Enter the number of no-fly zones to generate: "))
-        num_humans = int(input("Enter the number of humans to place in the window: "))
-        num_buildings = int(input("Enter the number of buildings to place in the window: "))
-        num_trees = int(input("Enter the number of trees to place in the window: "))
-        num_animals = int(input("Enter the number of animals to place in the window: "))
+        num_humans = int(input("Enter the number of humans to generate: "))
+        num_buildings = int(input("Enter the number of buildings to generate: "))
+        num_trees = int(input("Enter the number of trees to generate: "))
+        num_animals = int(input("Enter the number of animals to generate: "))
     except ValueError:
         print("Invalid input. Please enter integers for the number of obstacles and no fly zones.")
         return
-    
+
+    # Start listening for input in a separate thread
+    input_thread = threading.Thread(target=listen_for_input)
+    input_thread.start()
+  
+    num_timesteps = 10
     env_id = "Rendezvous-v0"
     dstr = datetime.datetime.now().strftime('%Y%m%d_%H%M_%S')
     log_dir = cpf.USER_OUTPUT_PATH + env_id + '_' + dstr
@@ -284,26 +511,21 @@ def main():
     #  Start the training process with the user-specified number of drones
     #train(num_timesteps=10, log_dir=log_dir, num_drones=num_drones)
     #train(num_timesteps=10, log_dir=log_dir, num_drones=num_drones, num_no_fly_zones=num_no_fly_zones, num_humans=num_humans, num_buildings=num_buildings, num_trees=num_trees, num_animals=num_animals)
-    """
+    
     # Create a separate thread for the training process - this allows the visualizer to display
     # pygame requires a continuous event loop to render and update the window. If the event loop is blocked or not running, the window may not display or refresh correctly.
     # TRPO algorithm might block the pygame window from refreshing properly
-    training_thread = threading.Thread(target=train, args=(10, log_dir, num_drones))
+    training_thread = threading.Thread(target=train, args=(num_timesteps, log_dir, training_controller, num_drones, num_no_fly_zones, num_humans, num_buildings, num_trees, num_animals))
     training_thread.start()
 
+    # Wait for both threads to complete
+    training_thread.join()
+    input_thread.join()
+    
     # Keep the Pygame visualizer running in the main thread to prevent it from freezing
-    while training_thread.is_alive():
-        pygame.time.wait(100)  # This adds a small delay to avoid a busy-wait loop
-    """
-    # Create a separate thread for the training process
-    training_thread = threading.Thread(target=train, args=(10, log_dir, num_drones, num_no_fly_zones, num_humans, num_buildings, num_trees, num_animals))
-    training_thread.start()
-
-    # Keep the Pygame visualizer running in the main thread to prevent it from freezing
-    while training_thread.is_alive():
-        pygame.time.wait(100)  # Adds a small delay to avoid busy-waiting
+    #while training_thread.is_alive():
+        #pygame.time.wait(100)  # Adds a small delay to avoid busy-waiting
         #pygame.event.pump()    # This allows pygame to process its events like window close
 
 if __name__ == '__main__':
     main()
-
