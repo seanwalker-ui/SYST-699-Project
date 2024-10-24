@@ -29,7 +29,7 @@ import capstone_parameter_file as cpf
 
 import pygame
 import random
-import threading   # run training and visualizer in parallel threads to ensure both work simultaneously without blocking each other.
+import threading   # Run training and visualizer in parallel threads to ensure both work simultaneously without blocking each other.
 import time        # Additional imports for pausing and resuming functionality
 
 
