@@ -37,11 +37,26 @@ import time        # Additional imports for pausing and resuming functionality
 
 # This is a class to handle pausing, resuming, and restarting of the training and display.
 class TrainingController:
-    def __init__(self):
+    def __init__(self, log_file="DRL_training_controller_log.csv"):
         self.pause_event = threading.Event()  # Event for pausing
         self.pause_event.set()  # Initially sets the running state to True
         self.stop_event = threading.Event()  # Event to stop the training
         self.restart_event = threading.Event()  # Event to restart the training
+        self.log_file = log_file
+        self.init_log_file()
+        
+    # Initialize log file with headers
+    def init_log_file(self):
+        with open(self.log_file, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Timestamp", "Event"])
+        
+    # Log actions to the CSV file
+    def log_action(self, action):
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        with open(self.log_file, mode="a", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow([timestamp, action])
         
     def pause(self):
         # Pauses the training and display.
@@ -66,9 +81,16 @@ class TrainingController:
 
 # This class contains the drone features for avoiding collisions.
 class CollisionAvoidance:
-    def __init__(self, min_distance=5, log_file="collision_log.csv"):
+    def __init__(self, min_distance=5, log_file="DRL_collision_log.csv"):
         self.min_distance = min_distance  # Minimum safe distance from obstacles and no-fly zones
         self.log_file = log_file
+        self.init_log_file()
+
+    # This method initializes the log file with headers
+    def init_log_file(self):
+        with open(self.log_file, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Drone ID", "Object Type", "Distance", "Correction X", "Correction Y"])
 
     # This computes the Euclidean distance between the two points.
     @staticmethod
@@ -123,7 +145,9 @@ class CollisionAvoidance:
 
 # The DroneVisualizer class will manage the pygame window and display the drones' positions during each step.
 class DroneVisualizer:
-    def __init__(self, window_width=1280, window_height=960, drone_radius=5, num_drones=20, num_no_fly_zones=3, num_humans=5, num_buildings=5, num_trees=5, num_animals=5):
+    def __init__(self, window_width=1280, window_height=960, drone_radius=5, num_drones=20, 
+                 num_no_fly_zones=3, num_humans=5, num_buildings=5, num_trees=5, num_animals=5,
+                 log_file="DRL_visualizer_log.csv"):
         # Pygame setup
         pygame.init()
         self.window_width = window_width
@@ -134,6 +158,8 @@ class DroneVisualizer:
         self.font = pygame.font.SysFont(None, 16)
         self.clock = pygame.time.Clock()
         self.fps = 30  # Frames per second
+        self.log_file = log_file
+        self.init_log_file()
 
         # Initialize obstacle lists and colors for the obstacles/drones.
         self.drone_color = (0, 0, 255)  # Blue for drones
@@ -155,6 +181,12 @@ class DroneVisualizer:
         # Generate a random target location
         self.target_location = self.generate_random_target()
         self.target_radius = 10  # Radius of the target
+
+    # Initializes the log file for the visualizer
+    def init_log_file(self):
+        with open(self.log_file, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Step", "Drone ID", "Position X", "Position Y", "Target X", "Target Y"])
 
     def generate_no_fly_zones(self, num_no_fly_zones):
         # Generate random positions and sizes for no-fly zones
@@ -274,6 +306,15 @@ class DroneVisualizer:
 
         # Limit the frame rate
         self.clock.tick(self.fps)
+
+    # Logs drone positions and target location each step
+    def log_drones(self, step, drone_positions, target_location):
+        target_x, target_y = target_location
+        with open(self.log_file, mode="a", newline="") as file:
+            writer = csv.writer(file)
+            for i, pos in enumerate(drone_positions):
+                x, y = pos[:2]
+                writer.writerow([step, i, x, y, target_x, target_y])
 
     def close(self):
         pygame.quit()
